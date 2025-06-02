@@ -3,6 +3,7 @@
 namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use \Illuminate\Support\Str;
+use Illuminate\Support\Facades\Log;
 
 class Category extends Model{
     
@@ -10,6 +11,7 @@ class Category extends Model{
     protected $primaryKey = 'id';
     protected $keyType = 'string';
     public $incrementing = false;
+    public $timestamps = false;
 
     protected $fillable = [
         'name',

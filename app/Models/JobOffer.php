@@ -12,6 +12,7 @@ class JobOffer extends Model{
     protected $primaryKey = 'id';
     protected $keyType = 'string';
     public $incrementing = false;
+    public $timestamps = false;
 
     protected $fillable = [
         'title',

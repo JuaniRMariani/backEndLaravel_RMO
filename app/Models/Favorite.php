@@ -11,6 +11,7 @@ class Favorite extends Model{
     protected $primaryKey = 'id';
     protected $keyType = 'string';
     public $incrementing = false;
+    public $timestamps = false;
 
     protected $fillable = [
         'user_id',

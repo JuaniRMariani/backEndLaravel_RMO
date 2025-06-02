@@ -16,17 +16,9 @@ class AuthController extends Controller{
     }
 
     public function googleLogin(Request $request): JsonResponse{
-        $validated = $request->validate([
-            'tokenId' => 'required|string',
-            'userEmail' => 'required|email',
-            'userName' => 'required|string',
-            'googleId' => 'required|string',
-        ]);
-
-        $googleRequest = GoogleLoginRequestDTO::fromArray($validated);
+        $googleRequest = GoogleLoginRequestDTO::fromArray($request->toArray());
         $user = $this->authService->authenticateWithGoogle($googleRequest);
-        $token = $this->authService->generateJwtToken($user->email);
 
-        return response()->json(new AuthResponseDTO($user->id, $token), 200);
+        return response()->json(new AuthResponseDTO($user->id, $user->token), 200);
     }
 }

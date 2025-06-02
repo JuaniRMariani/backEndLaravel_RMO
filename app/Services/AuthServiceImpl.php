@@ -10,38 +10,28 @@ use Exception;
 use Google_Client;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
+use Illuminate\Support\Facades\Validator;
+
 class AuthServiceImpl implements AuthService{
 
     public function authenticateWithGoogle(GoogleLoginRequestDTO $requestGoogle): UserDTO{
         try{
-            $client = new Google_Client();
-            $client->setClientId(config('services.google.client_id'));
-            $client->setClientSecret(config('services.google.client_secret'));
-            $payload = $client->verifyIdToken($requestGoogle->tokenId);
+            $this->validateUserData($requestGoogle->toArray());
+            $payload = $this->validateGoogleToken($requestGoogle->tokenId);
 
-            if(!$payload || $payload['sub'] !== $requestGoogle->googleId || $payload['email'] !== $requestGoogle->userEmail) {
+            if(!$payload) {
                 throw new Exception('Invalid ID token');
             }
 
-            $user = User::updateOrCreate(
-                ['google_id' => $requestGoogle->googleId],
-                [
-                    'name' => $requestGoogle->userName,
-                    'email' => $requestGoogle->googleId,
-                ]
-            );
+            $user = $this->userToDataBase($requestGoogle);
 
-            return new UserDTO(
-                $user->id,
-                $user->name,
-                $user->email,
-                $this->generateJwtToken($user->email)
-            );
+            return $this->userToDTO($user);
         
         } catch (Exception $e) {
             throw new Exception('Google Authentication failed: ' . $e->getMessage());
         }
     }
+
     public function generateJwtToken(string $userEmail): string{
         try{
             $user = User::where('email', $userEmail)->firstOrFail();
@@ -50,5 +40,47 @@ class AuthServiceImpl implements AuthService{
             throw new Exception('Token generation failed: ' . $e->getMessage());
         }
     }
+
+    private function userToDTO(User $user): UserDTO{
+        return new UserDTO(
+            $user->id,
+            $user->name,
+            $user->email,
+            $this->generateJwtToken($user->email)
+        );
+    }
+
+    private function validateGoogleToken($tokenId): bool{
+        $client = new Google_Client();
+        $client->setClientId(config('services.google.client_id'));
+        $client->setClientSecret(config('services.google.client_secret'));
+        $client->setRedirectUri(config('services.google.redirect'));
+        $client->addScope(config('services.google.scope'));
+        $payload = $client->verifyIdToken($tokenId);
+
+        return $payload !== null;
+    }
+
+    private function userToDataBase(GoogleLoginRequestDTO $requestGoogle): User{
+       return User::updateOrCreate(
+                ['googleId' => $requestGoogle->googleId],
+                [
+                    'name' => $requestGoogle->userName,
+                    'email' => $requestGoogle->userEmail,
+                ]
+        );
+    }
+
+    private function validateUserData(array $data): void{
+        logger()->info("Validando datos de usuario", $data);
+        $rules = [
+            'googleId' => 'required|string',
+            'userName' => 'required|string',
+            'userEmail' => 'required|email',
+        ];
+
+        Validator::make($data, $rules)->validate();
+    }
+
 
 }
